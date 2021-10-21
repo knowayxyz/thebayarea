@@ -1,1 +1,147 @@
-The Bay Area
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>粤港澳大湾区专题地图-Thematic Maps of the Guangdong-Hong Kong-Macao Great Bayarea</title>
+        <meta charset="utf-8" />
+	    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+        <style>
+            body {
+                padding: 0;
+                margin: 0;
+            }
+            html, body, #map {
+                height: 100%;
+                width: 100%;
+            }
+            #map{
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 100%;
+            }
+            .info { padding: 6px 20px; font: 14px/16px Arial, Helvetica, sans-serif; background: white; background: rgba(255,255,255,0.8); box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 5px; } .info h4 { margin: 0 0 5px; color: #777; }
+            .legend { text-align: left; line-height: 18px; color: #555; } .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7; }
+        </style>
+    </head>
+    
+    <body>
+        <div id="map"></div>
+        <script type="text/javascript" src="data/cities.js"></script>
+        <script>
+            /*
+                地形图：http://t4.tianditu.gov.cn/DataServer?T=ter_w&x={x}&y={y}&l={z}&tk=key
+                街道图：http://t4.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=key
+                影像图：http://t4.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=key
+                影像标注：http://t4.tianditu.gov.cn/DataServer?T=cia_w&x={x}&y={y}&l={z}&tk=key
+                地形标注：http://t4.tianditu.gov.cn/DataServer?T=cta_w&x={x}&y={y}&l={z}&tk=key
+                矢量标注：http://t4.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=key
+            */
+            var map = L.map('map').setView([22.5,115], 8);
+
+            L.tileLayer('http://t4.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=005c0140f2b81a29cf34caca84438da1', {
+                attribution: '&copy; <a href="https://map.tianditu.gov.cn/">天地图</a> contributors'
+            }).addTo(map);
+            L.tileLayer('http://t4.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=005c0140f2b81a29cf34caca84438da1', {
+                attribution: '&copy; <a href="https://map.tianditu.gov.cn/">天地图</a> contributors'
+            }).addTo(map);
+            
+            var info = L.control();
+
+            info.onAdd = function (map) {
+                this._div = L.DomUtil.create('div', 'info');
+                this.update();
+                return this._div;
+            };
+
+            info.update = function (props) {
+                this._div.innerHTML = '<h3>粤港澳大湾区专题地图 </h3><h3>Thematic Maps of the Guangdong-Hong Kong-Macao Great Bayarea</h3><h4>城市概况-City Overview</h4>' +  (props ?
+                    '<b>' + props.city_name + '</b><br />' + props.city_type
+                    : '选择一个城市.Hover over a city.');
+            };
+
+            info.addTo(map);
+            
+            function getColor(d) {
+                return d == "副省级市" ? "#FF7E00" :
+                       d == "地级市" ? "#FFFF00" :
+                       d == "特别行政区"  ? "#FF0000" :
+                       '#FFEDA0';
+            }
+
+            function style(feature) {
+                return {
+                    weight: 2,
+                    opacity: 1,
+                    color: 'gray',
+                    dashArray: '3',
+                    fillOpacity: 0.7,
+                    fillColor: getColor(feature.properties.city_type)
+                };
+            }
+
+            function highlightFeature(e) {
+                var layer = e.target;
+
+                layer.setStyle({
+                    weight: 3,
+                    color: '#888',
+                    dashArray: '',
+                    fillOpacity: 0.7
+                });
+
+                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                    layer.bringToFront();
+                }
+
+                info.update(layer.feature.properties);
+            }
+
+	        var geojson;
+
+            function resetHighlight(e) {
+                geojson.resetStyle(e.target);
+                info.update();
+            }
+
+            function zoomToFeature(e) {
+                //map.fitBounds(e.target.getBounds());
+            }
+
+
+            function onEachFeature(feature, layer) {
+                layer.on({
+                    mouseover: highlightFeature,
+                    mouseout: resetHighlight,
+                    click: zoomToFeature
+                });
+            }
+
+            geojson = L.geoJson(bayarea_cities, {
+                style: style,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+
+            var legend = L.control({position: 'bottomright'});
+
+            legend.onAdd = function (map) {
+
+                var div = L.DomUtil.create('div', 'info legend'),
+                    grades = ["副省级市", "地级市","特别行政区"],
+                    labels = [];
+
+                for (var i = 0; i < grades.length; i++) {
+                
+                    labels.push(
+                        '<i style="background:' + getColor(grades[i]) + '"></i> ' + grades[i]);
+                }
+
+                div.innerHTML = labels.join('<br><br>');
+                return div;
+            };
+
+            legend.addTo(map);
+        </script>
+    </body>
+</html>
